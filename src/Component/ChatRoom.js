@@ -3,15 +3,41 @@ import styled from 'styled-components';
 import {useLocation} from 'react-router-dom';
 import OtherMessage from './OtherMessage';
 import MyMessage from './MyMessage';
-
+import {io} from "socket.io-client"
 
 function ChatRoom() {
+
 
     const location = useLocation()
     const [message,setMessage] = useState("");
     const [data,setData] = useState({})
     const inputRef = useRef(null);
     const [allMessages,setallMessages] = useState([]);
+    const [socket,setSocket] = useState()
+    const msgboxRef = useRef(null)
+
+    useEffect(()=>{
+        const socket = io("http://localhost:3001/");
+        setSocket(socket);
+        socket.on("connect",()=>{
+            socket.emit("joinRoom",location.state.room)
+        });
+       
+
+    },[])
+
+    useEffect(()=>{
+        if(socket)
+        {
+             socket.on("getLatestMessage",(newMessage) =>{
+                setallMessages([...allMessages,newMessage]);
+                msgboxRef.current.scrollIntoView({behavior:"smooth"})
+                inputRef.current.value="";
+
+        })
+        }
+
+    },[socket,allMessages])
 
     const handleEvent = () => {
         setMessage(inputRef.current.value);
@@ -22,7 +48,19 @@ function ChatRoom() {
         
     },[location])
 
-    
+    const handleEnter = e => e.keyCode===13? onSubmit():"";
+
+
+    const onSubmit =() =>{
+        if(message)
+        {
+           const newMessage={time:new Date(),message,name:data.name}
+           socket.emit("newMessage",{newMessage, room:data.room});
+           setMessage("");
+       }
+       
+     }
+
 
 
   return (
@@ -35,18 +73,15 @@ function ChatRoom() {
                     ?
                     <MyMessage name={msg.name} time={msg.time} message={msg.message}></MyMessage>
                     :
-                    <OtherMessage></OtherMessage>
+                    <OtherMessage name={msg.name} time={msg.time} message={msg.message}></OtherMessage>
                 })
             
             }
+            <div ref={msgboxRef}></div>
          </ContainerMessages>
          <Footer>
-             <ContainerInput ref={inputRef} onChange={handleEvent} placeholder='Enter message here'></ContainerInput>
-             <Button onClick={()=>{
-                 const newMessage={time:new Date(),message,name:data.name}
-                 setallMessages([...allMessages,newMessage])
-                 console.log(allMessages);
-             }}>Send</Button>
+             <ContainerInput ref={inputRef} onChange={handleEvent} onKeyDown={handleEnter} placeholder='Enter message here'></ContainerInput>
+             <Button onClick={onSubmit}>Send</Button>
          </Footer>
     </Container>
   )

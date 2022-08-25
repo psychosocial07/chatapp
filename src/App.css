@@ -2,3 +2,10 @@ body
 {
   background-color: antiquewhite;
 }
+.box1
+{
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 5px;
+  
+}
